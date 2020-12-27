@@ -1,9 +1,37 @@
+import os
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 
       
 
+def ReadImage(ImageFolderPath):
+    Images = []									# Input Images will be stored in this list.
+
+	# Checking if path is of folder.
+    if os.path.isdir(ImageFolderPath):                              # If path is of a folder contaning images.
+        ImageNames = os.listdir(ImageFolderPath)
+        ImageNames_Split = [[int(os.path.splitext(os.path.basename(ImageName))[0]), ImageName] for ImageName in ImageNames]
+        ImageNames_Split = sorted(ImageNames_Split, key=lambda x:x[0])
+        ImageNames_Sorted = [ImageNames_Split[i][1] for i in range(len(ImageNames_Split))]
+        
+        for i in range(len(ImageNames_Sorted)):                     # Getting all image's name present inside the folder.
+            ImageName = ImageNames_Sorted[i]
+            InputImage = cv2.imread(ImageFolderPath + "/" + ImageName)  # Reading images one by one.
+            
+            # Checking if image is read
+            if InputImage is None:
+                print("Not able to read image: {}".format(ImageName))
+                exit(0)
+
+            Images.append(InputImage)                               # Storing images.
+            
+    else:                                       # If it is not folder(Invalid Path).
+        print("\nEnter valid Image Folder Path.\n")
+        
+    return Images
+
+    
 def FindMatches(BaseImage, SecImage):
     # Using SIFT to find the keypoints and decriptors in the images
     Sift = cv2.SIFT_create()
@@ -124,19 +152,14 @@ def StitchImages(BaseImage, SecImage):
 
 
 if __name__ == "__main__":
-    # Reading the 2 images.
-    Image1 = cv2.imread("InputImages/Sun/1.jpg")
-    Image2 = cv2.imread("InputImages/Sun/2.jpg")
-
-    # Checking if images read
-    if Image1 is None or Image2 is None:
-        print("\nImages not read properly or does not exist.\n")
-        exit(0)
-
+    # Reading images.
+    ReadImage("InputImages/Field")
+    
+    '''
     # Calling function for stitching images.
     StitchedImage = StitchImages(Image1, Image2)
 
     # Displaying the stitched images.
     plt.imshow(StitchedImage)
-    plt.show()
+    plt.show()'''
     
