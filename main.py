@@ -159,11 +159,11 @@ if __name__ == "__main__":
     # Reading images.
     Images = ReadImage("InputImages/Field")
     
-    '''
-    # Calling function for stitching images.
-    StitchedImage = StitchImages(Image1, Image2)
+    BaseImage = Images[0]
+    for i in range(1, len(Images)):
+        StitchedImage = StitchImages(BaseImage, Images[i])
 
-    # Displaying the stitched images.
-    plt.imshow(StitchedImage)
-    plt.show()'''
-    
+        plt.imshow(cv2.cvtColor(StitchedImage, cv2.COLOR_BGR2RGB))
+        plt.show()
+        
+        BaseImage = StitchedImage.copy()    
