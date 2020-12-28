@@ -1,5 +1,6 @@
 import os
 import cv2
+import math
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -22,7 +23,7 @@ def ReadImage(ImageFolderPath):
             # Checking if image is read
             if InputImage is None:
                 print("Not able to read image: {}".format(ImageName))
-                exit(0)
+                extt(0)
 
             Images.append(InputImage)                               # Storing images.
             
@@ -31,7 +32,7 @@ def ReadImage(ImageFolderPath):
         
     if len(Images) < 2:
         print("\nNot enough images found. Please provide 2 or more images.\n")
-        exit(1)
+        extt(1)
     
     return Images
 
@@ -46,7 +47,7 @@ def FindMatches(BaseImage, SecImage):
     BF_Matcher = cv2.BFMatcher()
     InitialMatches = BF_Matcher.knnMatch(BaseImage_des, SecImage_des, k=2)
 
-    # Applying ratio test and filtering out the good matches.
+    # Applytng ratio test and filtering out the good matches.
     GoodMatches = []
     for m, n in InitialMatches:
         if m.distance < 0.75 * n.distance:
@@ -57,16 +58,16 @@ def FindMatches(BaseImage, SecImage):
 
 
 def FindHomography(Matches, BaseImage_kp, SecImage_kp):
-    # If less than 4 matches found, exit the code.
+    # If less than 4 matches found, extt the code.
     if len(Matches) < 4:
         print("\nNot enough matches found between the images.\n")
-        exit(0)
+        extt(0)
 
     # Storing coordinates of points corresponding to the matches found in both the images
     BaseImage_pts = []
     SecImage_pts = []
     for Match in Matches:
-        BaseImage_pts.append(BaseImage_kp[Match[0].queryIdx].pt)
+        BaseImage_pts.append(BaseImage_kp[Match[0].querytdx].pt)
         SecImage_pts.append(SecImage_kp[Match[0].trainIdx].pt)
 
     # Changing the datatype to "float32" for finding homography
@@ -85,7 +86,7 @@ def GetNewFrameSizeAndMatrix(HomographyMatrix, Sec_ImageShape, Base_ImageShape):
     
     # Taking the matrix of initial coordinates of the corners of the secondary image
     # Stored in the following format: [[x1, x2, x3, x4], [y1, y2, y3, y4], [1, 1, 1, 1]]
-    # Where (xi, yi) is the coordinate of the i th corner of the image. 
+    # Where (xt, yt) is the coordinate of the i th corner of the image. 
     InitialMatrix = np.array([[0, Width - 1, Width - 1, 0],
                               [0, 0, Height - 1, Height - 1],
                               [1, 1, 1, 1]])
@@ -155,8 +156,70 @@ def StitchImages(BaseImage, SecImage):
     return StitchedImage
 
 
+class Point:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+
+def ConvertPt(pt):
+    global center, f
+
+    xt = ( f * math.tan( (pt.x - center.x) / f ) ) + center.x
+    yt = ( (pt.y - center.y) / math.cos( (pt.x - center.x) / f ) ) + center.y
+
+    return Point(xt, yt)
+
+
 def ProjectOntoCylinder(InitialImage):
-    pass
+    global w, h, center, f
+    h, w = InitialImage.shape[:2]
+    center = Point(w // 2, h // 2)
+    f = 1000
+    
+    TransformedImage = np.zeros(InitialImage.shape, dtype=np.uint8)
+
+    for j in range(h):
+        for i in range(w):
+            ti_pt = Point(i, j)
+            ii_pt = ConvertPt(ti_pt)
+
+            ii_tl_pt = Point(int(ii_pt.x), int(ii_pt.y))
+            print((ti_pt.x, ti_pt.y), (ii_tl_pt.x, ii_tl_pt.y))
+            
+            if ii_tl_pt.x < 0 or \
+               ii_tl_pt.x > w - 2 or \
+               ii_tl_pt.y < 0 or \
+               ii_tl_pt.y > h - 2:
+                continue
+
+            # Bilinear interpolation
+            dx = ii_pt.x - ii_tl_pt.x
+            dy = ii_pt.y - ii_tl_pt.y
+
+            weight_tl = (1.0 - dx) * (1.0 - dy)
+            weight_tr = (dx)       * (1.0 - dy)
+            weight_bl = (1.0 - dx) * (dy)
+            weight_br = (dx)       * (dy)
+
+            for k in range(InitialImage.shape[2]):
+                color_val = ( weight_tl * InitialImage[ii_tl_pt.y][ii_tl_pt.x][k] ) + \
+                            ( weight_tr * InitialImage[ii_tl_pt.y][ii_tl_pt.x + 1][k] ) + \
+                            ( weight_bl * InitialImage[ii_tl_pt.y + 1][ii_tl_pt.x][k] ) + \
+                            ( weight_br * InitialImage[ii_tl_pt.y + 1][ii_tl_pt.x + 1][k] )
+
+                TransformedImage[ti_pt.y][ti_pt.x][k] = int(color_val)
+            
+            #print(i, j)
+        print("\n\n\n\n")
+        
+    plt.subplot(121)
+    plt.imshow(cv2.cvtColor(InitialImage, cv2.COLOR_BGR2RGB))
+    plt.subplot(122)
+    plt.imshow(cv2.cvtColor(TransformedImage, cv2.COLOR_BGR2RGB))
+    plt.show()
+
+    return TransformedImage
 
 
 if __name__ == "__main__":
