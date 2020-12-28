@@ -155,13 +155,21 @@ def StitchImages(BaseImage, SecImage):
     return StitchedImage
 
 
+def ProjectOntoCylinder(InitialImage):
+    pass
+
+
 if __name__ == "__main__":
     # Reading images.
     Images = ReadImage("InputImages/Field")
     
-    BaseImage = Images[0]
-    for i in range(1, len(Images)):
-        StitchedImage = StitchImages(BaseImage, Images[i])
+    Cyl_Images = []
+    for Image in Images:
+        Cyl_Images.append(ProjectOntoCylinder(Image))
+
+    BaseImage = Cyl_Images[0]
+    for i in range(1, len(Cyl_Images)):
+        StitchedImage = StitchImages(BaseImage, Cyl_Images[i])
 
         plt.imshow(cv2.cvtColor(StitchedImage, cv2.COLOR_BGR2RGB))
         plt.show()
