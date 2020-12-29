@@ -67,7 +67,7 @@ def FindHomography(Matches, BaseImage_kp, SecImage_kp):
     BaseImage_pts = []
     SecImage_pts = []
     for Match in Matches:
-        BaseImage_pts.append(BaseImage_kp[Match[0].querytdx].pt)
+        BaseImage_pts.append(BaseImage_kp[Match[0].queryIdx].pt)
         SecImage_pts.append(SecImage_kp[Match[0].trainIdx].pt)
 
     # Changing the datatype to "float32" for finding homography
@@ -175,7 +175,7 @@ def ProjectOntoCylinder(InitialImage):
     global w, h, center, f
     h, w = InitialImage.shape[:2]
     center = Point(w // 2, h // 2)
-    f = 1000
+    f = 1220
     
     TransformedImage = np.zeros(InitialImage.shape, dtype=np.uint8)
 
