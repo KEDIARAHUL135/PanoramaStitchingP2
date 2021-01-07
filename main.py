@@ -202,13 +202,10 @@ def ProjectOntoCylinder(InitialImage):
             weight_bl = (1.0 - dx) * (dy)
             weight_br = (dx)       * (dy)
 
-            for k in range(InitialImage.shape[2]):
-                color_val = ( weight_tl * InitialImage[ii_tl_pt.y][ii_tl_pt.x][k] ) + \
-                            ( weight_tr * InitialImage[ii_tl_pt.y][ii_tl_pt.x + 1][k] ) + \
-                            ( weight_bl * InitialImage[ii_tl_pt.y + 1][ii_tl_pt.x][k] ) + \
-                            ( weight_br * InitialImage[ii_tl_pt.y + 1][ii_tl_pt.x + 1][k] )
-
-                TransformedImage[ti_pt.y][ti_pt.x][k] = int(color_val)
+            TransformedImage[ti_pt.y][ti_pt.x] = ( weight_tl * InitialImage[ii_tl_pt.y][ii_tl_pt.x] ) + \
+                                                 ( weight_tr * InitialImage[ii_tl_pt.y][ii_tl_pt.x + 1] ) + \
+                                                 ( weight_bl * InitialImage[ii_tl_pt.y + 1][ii_tl_pt.x] ) + \
+                                                 ( weight_br * InitialImage[ii_tl_pt.y + 1][ii_tl_pt.x + 1] )
             
             #print(i, j)
         print("\n\n\n\n")
@@ -227,7 +224,8 @@ if __name__ == "__main__":
     Images = ReadImage("InputImages/Field")
     
     Cyl_Images = []
-    for Image in Images:
+    for i in range(len(Images)):
+        Image = Images[i]
         Cyl_Images.append(ProjectOntoCylinder(Image))
 
     BaseImage = Cyl_Images[0]
