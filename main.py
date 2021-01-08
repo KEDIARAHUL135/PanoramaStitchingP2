@@ -140,18 +140,29 @@ def GetNewFrameSizeAndMatrix(HomographyMatrix, Sec_ImageShape, Base_ImageShape):
 
 
 def StitchImages(BaseImage, SecImage):
+    # Applying Cylindrical projection on SecImage
+    SecImage_Cyl, mask_x, mask_y = ProjectOntoCylinder(SecImage)
+
+    # Getting SecImage Mask
+    SecImage_Mask = np.zeros(SecImage_Cyl.shape, dtype=np.uint8)
+    SecImage_Mask[mask_y, mask_x, :] = 255
+
     # Finding matches between the 2 images and their keypoints
-    Matches, BaseImage_kp, SecImage_kp = FindMatches(BaseImage, SecImage)
+    Matches, BaseImage_kp, SecImage_kp = FindMatches(BaseImage, SecImage_Cyl)
     
     # Finding homography matrix.
     HomographyMatrix, Status = FindHomography(Matches, BaseImage_kp, SecImage_kp)
     
     # Finding size of new frame of stitched images and updating the homography matrix 
-    NewFrameSize, Correction, HomographyMatrix = GetNewFrameSizeAndMatrix(HomographyMatrix, SecImage.shape[:2], BaseImage.shape[:2])
+    NewFrameSize, Correction, HomographyMatrix = GetNewFrameSizeAndMatrix(HomographyMatrix, SecImage_Cyl.shape[:2], BaseImage.shape[:2])
 
     # Finally placing the images upon one another.
-    StitchedImage = cv2.warpPerspective(SecImage, HomographyMatrix, (NewFrameSize[1], NewFrameSize[0]))
-    StitchedImage[Correction[1]:Correction[1]+BaseImage.shape[0], Correction[0]:Correction[0]+BaseImage.shape[1]] = BaseImage
+    SecImage_Transformed = cv2.warpPerspective(SecImage_Cyl, HomographyMatrix, (NewFrameSize[1], NewFrameSize[0]))
+    SecImage_Transformed_Mask = cv2.warpPerspective(SecImage_Mask, HomographyMatrix, (NewFrameSize[1], NewFrameSize[0]))
+    BaseImage_Transformed = np.zeros((NewFrameSize[0], NewFrameSize[1], 3), dtype=np.uint8)
+    BaseImage_Transformed[Correction[1]:Correction[1]+BaseImage.shape[0], Correction[0]:Correction[0]+BaseImage.shape[1]] = BaseImage
+
+    StitchedImage = cv2.bitwise_or(SecImage_Transformed, cv2.bitwise_and(BaseImage_Transformed, cv2.bitwise_not(SecImage_Transformed_Mask)))
 
     return StitchedImage
 
@@ -222,16 +233,16 @@ def ProjectOntoCylinder(InitialImage):
     # Cropping out the black region from both sides (using symmetricity)
     TransformedImage = TransformedImage[:, min_x : -min_x, :]
 
-    return TransformedImage
+    return TransformedImage, ti_x-min_x, ti_y
 
 
 if __name__ == "__main__":
     # Reading images.
     Images = ReadImage("InputImages/Field")
     
-    BaseImage = ProjectOntoCylinder(Images[0])
+    BaseImage, _, _ = ProjectOntoCylinder(Images[0])
     for i in range(1, len(Images)):
-        StitchedImage = StitchImages(BaseImage, ProjectOntoCylinder(Images[i]))
+        StitchedImage = StitchImages(BaseImage, Images[i])
 
         plt.imshow(cv2.cvtColor(StitchedImage, cv2.COLOR_BGR2RGB))
         plt.show()
