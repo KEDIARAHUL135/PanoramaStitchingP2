@@ -156,65 +156,64 @@ def StitchImages(BaseImage, SecImage):
     return StitchedImage
 
 
-class Point:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-
-
-def ConvertPt(pt):
+def Convert_xy(x, y):
     global center, f
 
-    xt = ( f * math.tan( (pt.x - center.x) / f ) ) + center.x
-    yt = ( (pt.y - center.y) / math.cos( (pt.x - center.x) / f ) ) + center.y
-
-    return Point(xt, yt)
+    xt = ( f * np.tan( (x - center[0]) / f ) ) + center[0]
+    yt = ( (y - center[1]) / np.cos( (x - center[0]) / f ) ) + center[1]
+    
+    return xt, yt
 
 
 def ProjectOntoCylinder(InitialImage):
     global w, h, center, f
     h, w = InitialImage.shape[:2]
-    center = Point(w // 2, h // 2)
+    center = [w // 2, h // 2]
     f = 1220
     
+    # Creating a blank transformed image
     TransformedImage = np.zeros(InitialImage.shape, dtype=np.uint8)
+    
+    # Storing all coordinates of the transformed image in 2 arrays (x and y coordinates)
+    AllCoordinates_of_ti =  np.array([np.array([i, j]) for i in range(w) for j in range(h)])
+    ti_x = AllCoordinates_of_ti[:, 0]
+    ti_y = AllCoordinates_of_ti[:, 1]
+    
+    # Finding corresponding coordinates of the transformed image in the initial image
+    ii_x, ii_y = Convert_xy(ti_x, ti_y)
 
-    for j in range(h):
-        for i in range(w):
-            ti_pt = Point(i, j)
-            ii_pt = ConvertPt(ti_pt)
+    # Rounding off the coordinate values to get exact pixel values (top-left corner)
+    ii_tl_x = ii_x.astype(int)
+    ii_tl_y = ii_y.astype(int)
 
-            ii_tl_pt = Point(int(ii_pt.x), int(ii_pt.y))
-            print((ti_pt.x, ti_pt.y), (ii_tl_pt.x, ii_tl_pt.y))
-            
-            if ii_tl_pt.x < 0 or \
-               ii_tl_pt.x > w - 2 or \
-               ii_tl_pt.y < 0 or \
-               ii_tl_pt.y > h - 2:
-                continue
+    # Finding transformed image points whose corresponding 
+    # initial image points lies inside the initial image
+    GoodIndices = (ii_tl_x >= 0) * (ii_tl_x <= (w-2)) * \
+                  (ii_tl_y >= 0) * (ii_tl_y <= (h-2))
 
-            # Bilinear interpolation
-            dx = ii_pt.x - ii_tl_pt.x
-            dy = ii_pt.y - ii_tl_pt.y
+    # Removing all the outside points from everywhere
+    ti_x = ti_x[GoodIndices]
+    ti_y = ti_y[GoodIndices]
+    
+    ii_x = ii_x[GoodIndices]
+    ii_y = ii_y[GoodIndices]
 
-            weight_tl = (1.0 - dx) * (1.0 - dy)
-            weight_tr = (dx)       * (1.0 - dy)
-            weight_bl = (1.0 - dx) * (dy)
-            weight_br = (dx)       * (dy)
+    ii_tl_x = ii_tl_x[GoodIndices]
+    ii_tl_y = ii_tl_y[GoodIndices]
 
-            TransformedImage[ti_pt.y][ti_pt.x] = ( weight_tl * InitialImage[ii_tl_pt.y][ii_tl_pt.x] ) + \
-                                                 ( weight_tr * InitialImage[ii_tl_pt.y][ii_tl_pt.x + 1] ) + \
-                                                 ( weight_bl * InitialImage[ii_tl_pt.y + 1][ii_tl_pt.x] ) + \
-                                                 ( weight_br * InitialImage[ii_tl_pt.y + 1][ii_tl_pt.x + 1] )
-            
-            #print(i, j)
-        print("\n\n\n\n")
-        
-    plt.subplot(121)
-    plt.imshow(cv2.cvtColor(InitialImage, cv2.COLOR_BGR2RGB))
-    plt.subplot(122)
-    plt.imshow(cv2.cvtColor(TransformedImage, cv2.COLOR_BGR2RGB))
-    plt.show()
+    # Bilinear interpolation
+    dx = ii_x - ii_tl_x
+    dy = ii_y - ii_tl_y
+
+    weight_tl = (1.0 - dx) * (1.0 - dy)
+    weight_tr = (dx)       * (1.0 - dy)
+    weight_bl = (1.0 - dx) * (dy)
+    weight_br = (dx)       * (dy)
+    
+    TransformedImage[ti_y, ti_x, :] = ( weight_tl[:, None] * InitialImage[ii_tl_y,     ii_tl_x,     :] ) + \
+                                      ( weight_tr[:, None] * InitialImage[ii_tl_y,     ii_tl_x + 1, :] ) + \
+                                      ( weight_bl[:, None] * InitialImage[ii_tl_y + 1, ii_tl_x,     :] ) + \
+                                      ( weight_br[:, None] * InitialImage[ii_tl_y + 1, ii_tl_x + 1, :] )
 
     return TransformedImage
 
