@@ -217,10 +217,10 @@ def ProjectOntoCylinder(InitialImage):
 
 
     # Getting x coorinate to remove black region from right and left in the transformed image
-    min_x, max_x = min(ti_x), max(ti_x)
+    min_x = min(ti_x)
 
-    # Cropping out the black region from both sides
-    TransformedImage = TransformedImage[:, min_x : max_x + 1, :]
+    # Cropping out the black region from both sides (using symmetricity)
+    TransformedImage = TransformedImage[:, min_x : -min_x, :]
 
     return TransformedImage
 
