@@ -229,14 +229,9 @@ if __name__ == "__main__":
     # Reading images.
     Images = ReadImage("InputImages/Field")
     
-    Cyl_Images = []
-    for i in range(len(Images)):
-        Image = Images[i]
-        Cyl_Images.append(ProjectOntoCylinder(Image))
-
-    BaseImage = Cyl_Images[0]
-    for i in range(1, len(Cyl_Images)):
-        StitchedImage = StitchImages(BaseImage, Cyl_Images[i])
+    BaseImage = ProjectOntoCylinder(Images[0])
+    for i in range(1, len(Images)):
+        StitchedImage = StitchImages(BaseImage, ProjectOntoCylinder(Images[i]))
 
         plt.imshow(cv2.cvtColor(StitchedImage, cv2.COLOR_BGR2RGB))
         plt.show()
