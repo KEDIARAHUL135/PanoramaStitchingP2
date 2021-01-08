@@ -215,6 +215,13 @@ def ProjectOntoCylinder(InitialImage):
                                       ( weight_bl[:, None] * InitialImage[ii_tl_y + 1, ii_tl_x,     :] ) + \
                                       ( weight_br[:, None] * InitialImage[ii_tl_y + 1, ii_tl_x + 1, :] )
 
+
+    # Getting x coorinate to remove black region from right and left in the transformed image
+    min_x, max_x = min(ti_x), max(ti_x)
+
+    # Cropping out the black region from both sides
+    TransformedImage = TransformedImage[:, min_x : max_x + 1, :]
+
     return TransformedImage
 
 
