@@ -1,3 +1,8 @@
+# Output Images
+/*.jpg
+/*.png
+/*.jpeg
+
 # Python extra files
 /.vscode
 /__pycache__

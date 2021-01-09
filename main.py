@@ -178,7 +178,7 @@ def ProjectOntoCylinder(InitialImage):
     global w, h, center, f
     h, w = InitialImage.shape[:2]
     center = [w // 2, h // 2]
-    f = 1000       # 1100 field; 1000 Sun
+    f = 1100       # 1100 field; 1000 Sun; 1500 Rainier; 1050 Helens
     
     # Creating a blank transformed image
     TransformedImage = np.zeros(InitialImage.shape, dtype=np.uint8)
@@ -236,12 +236,12 @@ def ProjectOntoCylinder(InitialImage):
 
 if __name__ == "__main__":
     # Reading images.
-    Images = ReadImage("InputImages/Sun")
+    Images = ReadImage("InputImages/Field")
     
     BaseImage, _, _ = ProjectOntoCylinder(Images[0])
     for i in range(1, len(Images)):
         StitchedImage = StitchImages(BaseImage, Images[i])
-        
+
         BaseImage = StitchedImage.copy()    
 
     cv2.imwrite("Stitched_Panorama.png", BaseImage)
