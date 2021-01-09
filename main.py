@@ -2,8 +2,6 @@ import os
 import cv2
 import math
 import numpy as np
-from matplotlib import pyplot as plt
-
       
 
 def ReadImage(ImageFolderPath):
@@ -180,7 +178,7 @@ def ProjectOntoCylinder(InitialImage):
     global w, h, center, f
     h, w = InitialImage.shape[:2]
     center = [w // 2, h // 2]
-    f = 1220
+    f = 1000       # 1100 field; 1000 Sun
     
     # Creating a blank transformed image
     TransformedImage = np.zeros(InitialImage.shape, dtype=np.uint8)
@@ -238,13 +236,12 @@ def ProjectOntoCylinder(InitialImage):
 
 if __name__ == "__main__":
     # Reading images.
-    Images = ReadImage("InputImages/Field")
+    Images = ReadImage("InputImages/Sun")
     
     BaseImage, _, _ = ProjectOntoCylinder(Images[0])
     for i in range(1, len(Images)):
         StitchedImage = StitchImages(BaseImage, Images[i])
-
-        plt.imshow(cv2.cvtColor(StitchedImage, cv2.COLOR_BGR2RGB))
-        plt.show()
         
         BaseImage = StitchedImage.copy()    
+
+    cv2.imwrite("Stitched_Panorama.png", BaseImage)
