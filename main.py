@@ -21,7 +21,7 @@ def ReadImage(ImageFolderPath):
             # Checking if image is read
             if InputImage is None:
                 print("Not able to read image: {}".format(ImageName))
-                extt(0)
+                exit(0)
 
             Images.append(InputImage)                               # Storing images.
             
@@ -30,7 +30,7 @@ def ReadImage(ImageFolderPath):
         
     if len(Images) < 2:
         print("\nNot enough images found. Please provide 2 or more images.\n")
-        extt(1)
+        exit(1)
     
     return Images
 
@@ -56,10 +56,10 @@ def FindMatches(BaseImage, SecImage):
 
 
 def FindHomography(Matches, BaseImage_kp, SecImage_kp):
-    # If less than 4 matches found, extt the code.
+    # If less than 4 matches found, exit the code.
     if len(Matches) < 4:
         print("\nNot enough matches found between the images.\n")
-        extt(0)
+        exit(0)
 
     # Storing coordinates of points corresponding to the matches found in both the images
     BaseImage_pts = []
