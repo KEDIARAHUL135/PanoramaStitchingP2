@@ -5,6 +5,59 @@
 #include <filesystem>
 #include <cmath>
 
+namespace fs = std::filesystem;		// ISO C++17 Standard (/std:c++17)
+
+
+int ReadImage(std::string ImageFolderPath, std::vector<cv::Mat>& Images)
+{
+	// Checking if path is of folder.
+	if (fs::is_directory(fs::status(ImageFolderPath)))
+	{
+		std::vector<int> ImageNames_Int;
+		std::vector<std::string> ImageNames;
+		for (const auto& entry : fs::directory_iterator(ImageFolderPath))
+		{
+			ImageNames.push_back(entry.path().u8string());
+			ImageNames_Int.push_back(stoi(entry.path().stem().u8string()));
+		}
+
+		// Sorting the images according to their names and reading in ascending order.
+		std::vector<int> ImageNames_Int_Sorted = ImageNames_Int;
+		std::sort(ImageNames_Int_Sorted.begin(), ImageNames_Int_Sorted.end());
+
+		for (auto x : ImageNames_Int_Sorted)
+		{
+			for (int i = 0; i < ImageNames_Int.size(); i++)
+			{
+				if (ImageNames_Int[i] == x)
+				{
+					cv::Mat Image = cv::imread(ImageNames[i]);	// Reading images one by one.
+
+					if (Image.empty())		// Checking if image is read
+					{
+						std::cout << "Not able to read image: " << ImageNames[i] << std::endl;
+						exit(0);
+					}
+
+					Images.push_back(Image);
+
+					break;
+				}
+			}
+		}
+	}
+
+	else                                    // If it is not folder(Invalid Path).
+		std::cout << "\nEnter valid Image Folder Path.\n";
+
+	if (Images.size() < 2)
+	{
+		std::cout << "\nNot enough images found. Please provide 2 or more images.\n";
+		exit(1); 
+	}
+
+	return 0;
+}
 
 
 void FindMatches(cv::Mat BaseImage, cv::Mat SecImage, std::vector<cv::DMatch>& GoodMatches, std::vector<cv::KeyPoint>& BaseImage_kp, std::vector<cv::KeyPoint>& SecImage_kp)
@@ -168,10 +221,11 @@ cv::Mat StitchImages(cv::Mat BaseImage, cv::Mat SecImage)
 
 int main()
 {
-	// Reading the 2 images.
-	cv::Mat Image1 = cv::imread("InputImages/Field/8.jpg");
-	cv::Mat Image2 = cv::imread("InputImages/Field/7.jpg");
+	// Reading images.
+	std::vector<cv::Mat> Images;		// Input Images will be stored in this list.
+	ReadImage("InputImages/Field", Images);
 
+	/*
 	// Checking if images read
 	if (Image1.empty() || Image2.empty())
 	{
@@ -182,8 +236,7 @@ int main()
 	// Calling function for stitching images.
 	cv::Mat StitchedImage = StitchImages(Image1, Image2);
 
-	cv::imshow("Stitched Images", StitchedImage);
-	cv::waitKey(0);
-
+	cv::imwrite("cppStitchedImages.jpg", StitchedImage);
+	*/
 	return 0;
 }
