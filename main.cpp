@@ -64,7 +64,6 @@ void FindMatches(cv::Mat BaseImage, cv::Mat SecImage, std::vector<cv::DMatch>& G
 {
 	using namespace cv;
 	//using namespace cv::xfeatures2d;
-
 	// Using SIFT to find the keypointsand decriptors in the images
 	Ptr<SIFT> Sift = SIFT::create();
 	cv::Mat BaseImage_des, SecImage_des;
@@ -73,12 +72,12 @@ void FindMatches(cv::Mat BaseImage, cv::Mat SecImage, std::vector<cv::DMatch>& G
 	cv::cvtColor(SecImage, SecImage_Gray, cv::COLOR_BGR2GRAY);
 	Sift->detectAndCompute(BaseImage_Gray, cv::noArray(), BaseImage_kp, BaseImage_des);
 	Sift->detectAndCompute(SecImage_Gray, cv::noArray(), SecImage_kp, SecImage_des);
-
+	
 	// Using Brute Force matcher to find matches.
 	cv::BFMatcher BF_Matcher;
 	std::vector<std::vector<cv::DMatch>> InitialMatches;
 	BF_Matcher.knnMatch(BaseImage_des, SecImage_des, InitialMatches, 2);
-
+	
 	// Applying ratio test and filtering out the good matches.
 	for (int i = 0; i < InitialMatches.size(); ++i)
 	{
@@ -191,34 +190,6 @@ void GetNewFrameSizeAndMatrix(cv::Mat &HomographyMatrix, int* Sec_ImageShape, in
 
 }
 
-cv::Mat StitchImages(cv::Mat BaseImage, cv::Mat SecImage)
-{
-	// Finding matches between the 2 images and their keypoints
-	std::vector<cv::DMatch> Matches;
-	std::vector<cv::KeyPoint> BaseImage_kp, SecImage_kp;
-	FindMatches(BaseImage, SecImage, Matches, BaseImage_kp, SecImage_kp);
-
-	// Finding homography matrix.
-	cv::Mat HomographyMatrix;
-	FindHomography(Matches, BaseImage_kp, SecImage_kp, HomographyMatrix);
-	
-	
-	// Finding size of new frame of stitched images and updating the homography matrix
-	int Sec_ImageShape[2] = { SecImage.rows, SecImage.cols };
-	int Base_ImageShape[2] = { BaseImage.rows, BaseImage.cols };
-	int NewFrameSize[2], Correction[2];
-	//NewFrameSize, Correction, HomographyMatrix = 
-	GetNewFrameSizeAndMatrix(HomographyMatrix, Sec_ImageShape, Base_ImageShape, NewFrameSize, Correction);
-
-	
-	// Finally placing the images upon one another.
-	cv::Mat StitchedImage;
-	cv::warpPerspective(SecImage, StitchedImage, HomographyMatrix, cv::Size(NewFrameSize[1], NewFrameSize[0]));	
-	BaseImage.copyTo(StitchedImage(cv::Rect(Correction[0], Correction[1], BaseImage.cols, BaseImage.rows)));
-
-	return StitchedImage;
-}
-
 
 void Convert_xy(std::vector<int> ti_x, std::vector<int> ti_y, std::vector<float>& xt, std::vector<float>& yt, int center_x, int center_y, int f)
 {
@@ -283,7 +254,7 @@ void ProjectOntoCylinder(cv::Mat InitialImage, cv::Mat& TransformedImage, std::v
 	int f = 1100;			// 1100 field; 1000 Sun; 1500 Rainier; 1050 Helens
 
 	// Creating a blank transformed image.
-	TransformedImage = cv::Mat::zeros(cv::Size(InitialImage.cols, InitialImage.rows), CV_8UC3);
+	TransformedImage = cv::Mat::zeros(cv::Size(InitialImage.cols, InitialImage.rows), InitialImage.type());
 
 	// Storing all coordinates of the transformed image in 2 arrays (x and y coordinates)
 	std::vector<int> ti_x, ti_y;
@@ -350,10 +321,61 @@ void ProjectOntoCylinder(cv::Mat InitialImage, cv::Mat& TransformedImage, std::v
 	TransformedImage(cv::Rect(min_x, 0, TransformedImage.cols - min_x*2, TransformedImage.rows)).copyTo(TransformedImage);
 
 	// Setting return values
+	// mask_x = ti_x - min_x
 	std::vector<int> min_x_v(ti_x.size(), min_x);
 	std::transform(ti_x.begin(), ti_x.end(), min_x_v.begin(), std::back_inserter(mask_x),
 		[](int a, int b) { return (a - b); });
+	//mask_y = ti_y
 	mask_y = ti_y;
+}
+
+
+cv::Mat StitchImages(cv::Mat BaseImage, cv::Mat SecImage)
+{
+	// Applying Cylindrical projection on SecImage
+	cv::Mat SecImage_Cyl;
+	std::vector<int> mask_x, mask_y;
+	ProjectOntoCylinder(SecImage, SecImage_Cyl, mask_x, mask_y);
+
+	// Getting SecImage Mask
+	cv::Mat SecImage_Mask = cv::Mat::zeros(SecImage_Cyl.rows, SecImage_Cyl.cols, SecImage_Cyl.type());
+	//std::vector<int> white_color(255, SecImage_Mask.channels());
+	for (int i = 0; i < mask_x.size(); i++)
+	{
+		cv::Vec3b& value = SecImage_Mask.at<cv::Vec3b>(mask_y[i], mask_x[i]);
+		for (int k = 0; k < SecImage_Cyl.channels(); k++)
+			value.val[k] = 255;
+	}
+
+	// Finding matches between the 2 images and their keypoints
+	std::vector<cv::DMatch> Matches;
+	std::vector<cv::KeyPoint> BaseImage_kp, SecImage_kp;
+	FindMatches(BaseImage, SecImage_Cyl, Matches, BaseImage_kp, SecImage_kp);
+
+	// Finding homography matrix.
+	cv::Mat HomographyMatrix;
+	FindHomography(Matches, BaseImage_kp, SecImage_kp, HomographyMatrix);
+
+	// Finding size of new frame of stitched images and updating the homography matrix
+	int Sec_ImageShape[2] = { SecImage_Cyl.rows, SecImage_Cyl.cols };
+	int Base_ImageShape[2] = { BaseImage.rows, BaseImage.cols };
+	int NewFrameSize[2], Correction[2];
+	GetNewFrameSizeAndMatrix(HomographyMatrix, Sec_ImageShape, Base_ImageShape, NewFrameSize, Correction);
+
+	// Finally placing the images upon one another.
+	cv::Mat SecImage_Transformed, SecImage_Transformed_Mask;
+	cv::warpPerspective(SecImage_Cyl, SecImage_Transformed, HomographyMatrix, cv::Size(NewFrameSize[1], NewFrameSize[0]));
+	cv::warpPerspective(SecImage_Mask, SecImage_Transformed_Mask, HomographyMatrix, cv::Size(NewFrameSize[1], NewFrameSize[0]));
+
+	cv::Mat BaseImage_Transformed = cv::Mat::zeros(NewFrameSize[0], NewFrameSize[1], BaseImage.type());
+	BaseImage.copyTo(BaseImage_Transformed(cv::Rect(Correction[0], Correction[1], BaseImage.cols, BaseImage.rows)));
+
+	cv::Mat StitchedImage, temp;
+	cv::bitwise_not(SecImage_Transformed_Mask, SecImage_Transformed_Mask);
+	cv::bitwise_and(BaseImage_Transformed, SecImage_Transformed_Mask, temp);
+	cv::bitwise_or(SecImage_Transformed, temp, StitchedImage);
+
+	return StitchedImage;
 }
 
 
@@ -364,8 +386,17 @@ int main()
 	ReadImage("InputImages/Field", Images);
 
 	cv::Mat BaseImage, TransformedImage;
-	std::vector<int> mask_x, mask_y;
-	ProjectOntoCylinder(Images[0], TransformedImage, mask_x, mask_y);
+	std::vector<int> dummy1, dummy2;
+	ProjectOntoCylinder(Images[0], BaseImage, dummy1, dummy2);
+
+	for (int i = 1; i < Images.size(); i++)
+	{
+		cv::Mat StitchedImage = StitchImages(BaseImage, Images[i]);
+
+		StitchedImage.copyTo(BaseImage);
+	}
+	
+	cv::imwrite("cpp_Stitched_Panorama.png", BaseImage);
 
 	return 0;
 }
